@@ -1,0 +1,59 @@
+System cargoservice
+
+// richieste del customer
+Request load : load(X)
+Reply accepted   : accepted(SLOT)            for load   // accettazione
+Reply retrylater : retrylater(RetryMessage)  for load   // rinvio
+Reply reject     : reject(RejectedMessage)   for load   // rifiuto
+
+// per il sonar
+Dispatch distance : distance(X)
+
+Context ctxcargoservice ip [ host="localhost" port=8020 ]
+
+QActor cargoservice context ctxcargoservice {
+  [# 
+     var NSlotsOccupied = 0  
+     var IsEngaged = false
+  #]
+
+   State s0 initial {
+      println("cargoservice | stato iniziale")
+   }
+   Goto working
+
+   State working {
+      println("cargoservice | (working)...")
+   }
+   Transition t0
+      whenRequest load -> handleRequest
+
+   State handleRequest {
+      println("cargoservice | handleRequest ")
+
+      if [# IsEngaged #] {  //il sistema sta già gestendo una richiesta di carico
+         replyTo load with retrylater : retrylater("engaged")
+      }
+      else if [# NSlotsOccupied == 4 #] {  //tutti gli slot sono occupati
+         replyTo load with reject : reject("hold_full")
+      }
+      else {
+         [# 
+            NSlotsOccupied++ 
+            IsEngaged = true
+         #]
+         replyTo load with accepted : accepted($NSlotsOccupied)
+      }
+   }
+   Goto engaged if [# IsEngaged #] else working
+
+   State engaged {
+      println("cargoservice | sistema engaged. Avvio lampeggio LED...")
+   }
+}
+
+QActor sonar context ctxcargoservice {
+    State s0 initial {
+        println("sonar | stato iniziale")
+    }
+}
