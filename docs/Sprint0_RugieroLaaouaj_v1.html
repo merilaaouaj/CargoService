@@ -1,0 +1,244 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+
+
+
+
+
+
+
+
+<link rel="stylesheet" type="text/css" href="css/mystyle.css">
+<!--
+    <script type="text/javascript" src="../css/issStyle.js"></script>
+-->
+     
+<title>Sprint0</title></head>
+   
+<body>
+<div id="top">
+<h1>TemaFinale26 - Sprint0</h1>
+</div>  
+
+
+<div class="body">  
+
+
+<h2>Introduction</h2>
+
+
+<b>Goal:</b> abbattere le ambiguità del testo fornito dal committente, formalizzando il più possibile i termini usati
+usando un linguaggio di programmazione e/o un linguaggio di modellazione.<br>
+<br>
+I dettagli originali del progetto si possono trovare <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.31" target="_blank" rel="noopener noreferrer">qua</a>. <br>
+<br>Per comodità riportiamo il testo originale di seguente. <br><br>
+A <i>Maritime Cargo shipping company</i> (from now on, simply <b>company</b>) intends to automate the operations of load of
+<b>containers</b> in the ship’s cargo hold (or simply <b>hold</b>). To this end, the company plans to employ a Differential Drive
+Robot (from now, called <b>cargorobot</b>).<br>
+The hold is a rectangular, flat area with an Input/Output port (<b>IOPort</b>). The area provides 4 slots to store the
+containers and a slot named <b>slot5</b>.<br>
+<img src="./img/tf25sceneAnnotated.jpg" alt="img" width="60%" height="60%"><br>
+In the picture above:
+<ul class="req-list">
+<li>The <b>slots1-4</b> depict the hold areas reserved to store one container each,</li>
+<li>The <b>slots5</b> depicts an area, where the Cargorobot must temporarily store a container, before to place it in one of
+the slots1-4. During temporary storage, a ‘marker’ device labels the container with an identification barcode and
+signals when this marking activity is completed. </li>
+<li>The <b>IOPort</b> is a device with a pushbutton and a display. The pushbutton is pressed by the customer in order
+to to send a request to load a container on the cargo. The display is used to show the answer to the request and
+to show the current state of the hold.</li>
+<li>The <b>sensor</b> associated to the IOPort is a device (a sonar) used to detect the presence of a container, when it
+measures a distance D, such that D < DFREE/2, during a reasonable time (e.g. 3 secs).</li>
+</ul>
+ 
+<h2>Requirements</h2>
+The company asks us to build service named <b>cargoservice</b> that should work as follows.
+The cargoservice is able to receive a request to load a container sent by some customer by using the pushbutton of the
+IOPort.
+<ul>
+ <il>It sends the answer retrylater, if the IOPort is currently occupied by a container or if the system is Out of
+service</il>
+<il>It rejects the request when the hold is already full, i.e. the slots1-4 are already occupied.</il>
+<il>
+Otherwise, it considers the system as engaged, detects a free slot and returns as answer the name of such a
+reserved slot. While engaged, the system must blink a Led.
+</il>
+</ul>
+When the request to load is accepted, the customer must move the container in the sensor area within prefixed amount
+of time (e.g. 30 secs), otherwise the systems becomes disengaged. Then, the cargoservice uses the cargorobot to
+move the container from the IOPort to the slot5 (for marking the container) and then to the reserved slot.
+The service must also show on the display on the IOPort:
+<ul>
+<li>the current state of the hold</li>
+<li>the message <b>‘Service working’</b>, when it is all is going well</li>
+<li>the message <b>‘Out of service’</b> if the sonar sensor measures a distance D > DFREE for at least 3 secs (perhaps a
+failure of the sonar).</li>
+</ul>
+
+
+<h2>Requirement analysis</h2>
+<p>    
+Dal confronto con il committente, abbiamo chiarito e formalizzato le seguenti entità e i seguenti vincoli del sistema: <br>
+    <ol class="req-list">
+    <li>
+        <span><b>IOPORT</b>: è un’entità che rappresenta il canale di comunicazione tra il sistema esterno e il CargoService. Ha il compito di inoltrare le richieste dell’utente al sistema e di mostrare il feedback con un output visivo.<br>
+       Include il <b>pushbutton</b> (device di input per inviare richieste, componente reattivo) e il <b>display</b> (device di output per mostrare lo stato del sistema, componente passivo). Il committente ci ha informato che questo componente va sviluppato e viene modellato logicamente come un nodo indipendente che espone un’interfaccia web (<b>WebGUI</b>).  
+       </span>
+    </li>
+    <li>
+        <span><b>SENSOR</b>:è un dispositivo che ha il compito di rilevare la presenza prolungata di un container, oppure rilevare la presenza di un'anomalia. Per fare questo, il sensore fisico (dispositivo PicoW con sonar) misura la distanza degli oggetti rilevati (D).<br>
+            Data una distanza DFREE, il Sensor deve:
+            <ul>
+                <li>Rilevare Container, ovvero deve segnalare la presenza di un container nel momento in cui viene soddisfatta la condizione D < DFREE/2 per un tempo T >= 3 secondi </DFREE></li>
+                <li>Rilevare Guasto, ovvero deve segnalare un guasto quando viene verificata condizione D > DFREE per un tempo T >= 3 secondi </li>
+            </ul>
+ Il Sensor viene formalizzato come un micro-servizio autonomo (<b>Qactor</b>) allocato su un nodo computazionale distinto.
+            Il sensor riceve i dati grezzi direttamente dall'hardware. Ha il compito di isolare la logica di business dalle caratteristiche fisiche e dai segnali grezzi del mondo reale. <br>
+        </span>
+    </li>
+    <li>
+        <span><b>HOLD</b>: Rappresenta la mappa fisica in cui sono collocati gli Slot e la IOPORT. Serve al robot per calcolare i percorsi geometrici per evitare collisioni. Gestisce lo stato degli slot. Gli slot di stoccaggio sono 4 (slots 1-4). Lo ‘slot5’ è un’area di transito temporaneo. Per distinguere i diversi slot è necessario un identificativo univoco (ID da 1 a 5). Inoltre è necessario avere un attributo per ottenere la condizione corrente dello slot (occupato o libero).<br>
+L’entità HOLD è un componente passivo implementato come un POJO, è da sviluppare. Decidiamo di modellarla come una matrice e ogni cella è rappresentata da un'unità robotica (dimensione del robot). La posizione viene rappresentate tramite le coordinate della cella nella matrice. <br>
+    </span>
+    </li>
+    <li>
+        <span><b>CARGOROBOT</b>: è l'entità logica attiva che rappresenta il comportamento del Differential Drive Robot (DDR), che modelliamo come QActor.
+            Il committente fornisce una serie di componenti pre-costruiti per comandare il DDR robot, tra cui:
+            <ul>
+                <li><a href=”https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.25”>VirtualRobot26</a></li>
+                <li><a href=”https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.26”>RobotObj26</a></li>
+                <li><a href=”https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.27”>RobotService26</a></li>
+                <li><a href=”https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.30”>RobotSmart26</a></li>
+            </ul>
+            Abbiamo deciso di usare l'implementazione di <b>RobortSmart26</b>, in quanto è il componente che include nativamente più funzionalità al suo interno (come algoritmi di path-planning basato su una griglia) ed è quello che ci permette maggiormente di colmare l'abstraction gap dell’applicazione.<br>
+            Il CargoRobot funge da nodo mediatore traducendo i comandi logici di alto livello ricevuti in istruzione comprensibili dal RobortSmart26.
+    </span>
+    </li>
+    <li>
+        <span><b>CARGOSERVICE</b>: è il nodo orchestratore del sistema, implementa la logica di business del sistema e dirige il CargoRobot (lo rappresentiamo come un attore).
+            Il core business del sistema è l'automatizzazione delle operazioni di carico del container nella hold della nave. Implementa le logiche di accettazione, rifiuto, transizione degli stati operativo/guasto e coordinamento del movimento del robot.
+    </span>
+    <li>
+        <span><b>LED</b>: è un dispositivo luminoso collegato a un PicoW. Il CargoService deve poterlo accendere quando il sistema entra nello stato <i>engaged</i>, e deve spegnerlo quando torna nello stato <i>disengaged</i>. Esso è un’ entità passiva di output.
+    </li>
+</ol>
+
+
+<h3>Architettura del sistema</h3>
+Il sistema è un’architettura eterogenea e distribuita e si compone di quattro nodi computazionali: <br>
+<ul>
+<li> Nodo orchestratore del sistema (CargoService) che realizza il core business. </li>
+<li> Nodo CargoRobot, nodo mediatore che realizza l’applicazione nell’interazione con il DDR </li>
+<li> Nodo IOPORT che espone interfaccia GUI per l’interazione con l’utente </li>
+<li> Nodo che esegue il SENSOR usando dispositivo PicoW</li>
+
+
+</ul>
+
+
+<h3>Modello dell'Interazione Logica</h3>
+
+
+Scegliamo di modellare il sistema attraverso il linguaggio
+<a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.17">QAK</a>.
+Nel nostro sistema sono presenti diversi nodi eterogenei, dunque è necessario realizzare un modello distribuito. Usare un linguaggio di programmazione <i>general purpose</i> richiederebbe una quantità onerosa di codice ed è molto dipendente dalla tecnologia sottostante e dal protocollo di comunicazione scelto.
+Scegliamo quindi QAK perchè permette di ridurre l'abstraction gap tra requisiti nel contesto di un sistema distribuito (nasconde i dettagli implementativi relativi alla comunicazione) e per il suo essere technology independent.<br>
+
+
+
+
+Le interazioni tra le entità avvengono attraverso un pattern <b>request/reply</b>. <br>
+Quando viene premuto il pushbutton viene inviata una richiesta al CargoService.
+<br>
+<pre>
+Request load : load(X)
+Reply accepted : accepted (SLOT) for load   //accettazione
+Reply retrylater : retrylater(RetryMessage) for load //rinvio
+Reply reject : reject(RejectedMessage) for load //rifiuto
+</pre>
+</p>
+
+
+<h3> Abstraction Gap </h3>
+Uno dei nostri obiettivi è colmare l’abstraction gap presente tra il core business/specifiche del committente e la realtà computazionale.
+Utilizziamo quindi RobotSmart26 che astrae la pianificazione del percorso su mappa e modelliamo il Sensor come QActor.
+In questo modo il CargoService che è il nostro orchestratore può concentrarsi sulle regole di business. Infatti il CargoRobot maschera come è fatto il robot.
+
+
+<h2>Problem analysis</h2>
+
+
+<h2>Test plans</h2>
+La verifica della logica di business dello Sprint0 viene validata tramite test che simulano lo scambio di messaggi sugli attori logici. <br><br>
+
+
+
+
+<b>Accettazione richiesta</b><br>
+IOPort invia loadRequest(X) a cargoservice <br>
+<pre>
+@Test
+public void testLoadAcceptance() {
+   //inviamo richiesta di carico a sistema libero
+    MsgUtil.forwardQuad(ioportMock, "loadRequest", "loadRequest(client1)", cargoservice);
+    String actorState = connCoap.readState();
+   //verifichiamo che il sistema sia passato nello stato engaged
+    assertTrue(actorState.contains("engaged"));
+}
+</pre>
+
+
+<b>Rifiuto per Hold Piena </b><br>
+IOPort invia loadRequest(X) a cargoservice <br>
+<pre>
+public void TestFull {
+var hold = new Hold();
+    // 4 slot di storage occupati
+    for (int i = 0; i < 4; i++) {
+     hold.getSlots()[i].getValue().setOccupied(true);
+    }
+    
+    //verifica che sia tutto pieno
+    assertTrue(hold.isFull());
+}
+</pre>
+
+
+<h2>Project</h2>
+ 
+Un primo modello logico sviluppato in linguaggio QAK si può trovare nel seguente file <a href="https://github.com/merilaaouaj/CargoService/blob/f9bffbe4503d31bfac60670562ccf65f8a441433/sprint0/cargoservices/src/cargoservice.qak">cargoservice.qak</a>
+
+
+
+
+<h3>Goal dello Sprint1</h3>
+<p> Al termine dello Sprint0 si concorda con il committente di focalizzare lo <b>Sprint1</b> sulla realizzazione dell’iniziale prototipo logico della logica di business e di interazione core del <code>CargoService</code> e del <code>Sensor</code> (simulato). </p>
+Tempo stimato : 30 ore <br>
+
+
+
+
+
+
+<h2>Testing</h2>
+ 
+
+
+<h2>Deployment</h2>
+ 
+<h2>Maintenance</h2>
+      
+<br/><br/>  
+</div>  
+<div style="background-color:rgba(86, 56, 253, 0.9); width:70%;text-align:left;color:white">
+By Meriem Laaouaj email: meriem.laaouaj@studio.unibo.it,
+<img src="./img/immagine.jpg" alt="img" width="10%" height="80%">
+GIT repo: https://github.com/merilaaouaj/IngegneriaSistemiSoftware<br>
+By Marilena Rugiero email: marilena.rugiero@studio.unibo.it,
+<img src="./img/marilena-r.png" alt="img" width="10%" height="80%">
+GIT repo: https://github.com/marilena-uni/softwareEngineering
+</div>
+</body>
+</html>
