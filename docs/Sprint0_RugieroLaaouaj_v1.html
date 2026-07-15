@@ -261,7 +261,7 @@ QActor led context ctxdev {
 </pre>
 
 <h3>Contesti logici</h3>
-Dai requisiti si evince come il sistema sia intrinsecamente distribuito e non riducibile a un singolo processo unitario. Per questo motivo, le varie entità sono state ripartire in contesti (<b>context</b>) distinti, ciascuno dei quali funge da specifico nodo di elaborazione. Il sistema si compone dei seguenti quattro nodi computazionali.
+Dai requisiti si evince come il sistema sia intrinsecamente distribuito e non riducibile a un singolo processo unitario. Per questo motivo, le varie entità sono state ripartire in contesti (<b>context</b>) distinti, ciascuno dei quali funge da specifico nodo di elaborazione. Il sistema si compone dei seguenti quattro nodi computazionali.<br>
 <table>
   <tr>
     <th>Contesto</th>
@@ -294,9 +294,6 @@ Nel nostro sistema sono presenti diversi nodi eterogenei, dunque è necessario r
 QAK riesce a rappresentare la natura reattiva e proattiva dei servizi, introducendo attori, request/reply, eventi, messaggi e dispatch.
 Scegliamo quindi QAK perchè permette di ridurre l'abstraction gap tra requisiti nel contesto di un sistema distribuito (nasconde i dettagli implementativi relativi alla comunicazione) e per il suo essere technology independent.<br>
 
-
-
-
 Le interazioni tra le entità avvengono attraverso un pattern <b>request/reply</b>. <br>
 Quando viene premuto il pushbutton viene inviata una richiesta al CargoService.
 <br>
@@ -308,26 +305,18 @@ Reply reject : reject(RejectedMessage) for load //rifiuto
 </pre>
 </p>
 
-
 <h3> Abstraction Gap </h3>
 Uno dei nostri obiettivi è colmare l’abstraction gap presente tra il core business/specifiche del committente e la realtà computazionale.
 Utilizziamo quindi RobotSmart26 che astrae la pianificazione del percorso su mappa e modelliamo il Sensor come QActor.
 In questo modo il CargoService che è il nostro orchestratore può concentrarsi sulle regole di business. Infatti il CargoRobot maschera come è fatto il robot.
 
-
 <h2>Problem analysis</h2>
-
 
 <h2>Test plans</h2>
 La verifica della logica di business dello Sprint0 viene validata tramite test che simulano lo scambio di messaggi sugli attori logici. <br><br>
 
-
-
-
 <b>Accettazione richiesta</b><br>
-IOPort invia loadRequest(X) a cargoservice <br>
 <pre>
-
  @Before
 fun setup() {
     CommUtils.outcyan("Connecting Porta 8020")
@@ -380,21 +369,14 @@ fun testLoadAcceptance() {
 Un primo modello logico sviluppato in linguaggio QAK si può trovare nel seguente file <a href="https://github.com/merilaaouaj/CargoService/blob/f9bffbe4503d31bfac60670562ccf65f8a441433/sprint0/cargoservices/src/cargoservice.qak">cargoservice.qak</a>
 
 
-
-
 <h3>Goal dello Sprint1</h3>
-<p> Al termine dello Sprint0 si concorda con il committente di focalizzare lo <b>Sprint1</b> sulla realizzazione dell’iniziale prototipo logico della logica di business e di interazione core del <code>CargoService</code> e del <code>Sensor</code> (simulato). </p>
-Tempo stimato : 30 ore <br>
-
-
-
-
+<p> Al termine dello Sprint0 si concorda con il committente che lo <b>Sprint1</b> si concentrerà sulla realizzazione del prototipo logico iniziale di CargoService, focalizzandoci sulla logica di business del sistema per muovere il CargoRobot all'interno della stiva, 
+    utilizzando dei mock per le componenti non ancora sviluppate. </p>
+Tempo stimato : 32 ore <br>
 
 
 <h2>Testing</h2>
  
-
-
 <h2>Deployment</h2>
  
 <h2>Maintenance</h2>
