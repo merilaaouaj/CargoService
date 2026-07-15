@@ -9,7 +9,75 @@ Reply reject     : reject(RejectedMessage)   for load   // rifiuto
 // per il sonar
 Dispatch distance : distance(X)
 
-Context ctxcargoservice ip [ host="localhost" port=8020 ]
+Context ctxioport ip [ host="localhost" port=8020 ]
+Context ctxcargoservice ip [ host="localhost" port=8021 ]
+Context ctxdev ip [ host="localhost" port=8022 ]
+Context ctxrobot ip [ host="localhost" port=8023 ]
+
+QActor ioportmock context ctxioport {
+
+State s0 initial {
+ println("ioportmock | stato iniziale") 
+}
+Goto work
+
+State work {
+ println("ioportmock | (working)...")
+ request cargoservice -m load : load(100)
+}
+
+Transition t0 
+    whenReply accepted -> handleRequest
+    whenReply retrylater -> handleRetry
+    whenReply reject -> handleReject
+
+
+State handleRequest {
+println("ioportmock | (handleRequest , accepted)...")
+}
+Goto work
+
+State handleRetry {
+println("ioportmock | (handleRetry , retryLater)...")
+}
+Goto work
+
+State handleReject {
+println("ioportmock | (handleReject , rejected)...")
+}
+Goto work
+
+}
+
+
+
+QActor sonar context ctxdev {
+    State s0 initial {
+        println("sonar | stato iniziale")
+    }
+    Goto work
+    
+    State work {
+    println("sonar | working")
+    }
+}
+
+
+
+
+QActor cargorobot context ctxrobot {
+State s0 initial {
+ println("cargorobot  | stato iniziale") 
+}
+Goto work
+
+State work {
+ println("cargorobot | (working)...")
+}
+}
+
+
+
 
 QActor cargoservice context ctxcargoservice {
   [# 
@@ -34,16 +102,19 @@ QActor cargoservice context ctxcargoservice {
       if [# IsEngaged #] {  //il sistema sta già gestendo una richiesta di carico
          replyTo load with retrylater : retrylater("engaged")
       }
-      else if [# NSlotsOccupied == 4 #] {  //tutti gli slot sono occupati
+      else 
+      {  if[# NSlotsOccupied == 4 #] {  //tutti gli slot sono occupati
          replyTo load with reject : reject("hold_full")
-      }
-      else {
+         }
+          else {
          [# 
             NSlotsOccupied++ 
             IsEngaged = true
          #]
          replyTo load with accepted : accepted($NSlotsOccupied)
       }
+      }
+     
    }
    Goto engaged if [# IsEngaged #] else working
 
@@ -52,8 +123,15 @@ QActor cargoservice context ctxcargoservice {
    }
 }
 
-QActor sonar context ctxcargoservice {
+
+
+QActor led context ctxdev {
     State s0 initial {
-        println("sonar | stato iniziale")
+        println("led | stato iniziale")
+    }
+    Goto work
+    
+    State work {
+    println("led | working")
     }
 }
