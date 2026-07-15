@@ -327,31 +327,52 @@ La verifica della logica di business dello Sprint0 viene validata tramite test c
 <b>Accettazione richiesta</b><br>
 IOPort invia loadRequest(X) a cargoservice <br>
 <pre>
-@Test
-public void testLoadAcceptance() {
-   //inviamo richiesta di carico a sistema libero
-    MsgUtil.forwardQuad(ioportMock, "loadRequest", "loadRequest(client1)", cargoservice);
-    String actorState = connCoap.readState();
-   //verifichiamo che il sistema sia passato nello stato engaged
-    assertTrue(actorState.contains("engaged"));
-}
-</pre>
 
-
-<b>Rifiuto per Hold Piena </b><br>
-IOPort invia loadRequest(X) a cargoservice <br>
-<pre>
-public void TestFull {
-var hold = new Hold();
-    // 4 slot di storage occupati
-    for (int i = 0; i < 4; i++) {
-     hold.getSlots()[i].getValue().setOccupied(true);
+ @Before
+fun setup() {
+    CommUtils.outcyan("Connecting Porta 8020")
+    try {
+        conn = TcpClientSupport.connect("127.0.0.1", 8020, 10)
+    } catch (e: Exception) {
+        fail("TCP connection error ${e.message}")
     }
-    
-    //verifica che sia tutto pieno
-    assertTrue(hold.isFull());
 }
+
+@After
+fun teardown() {
+    conn?.close()
+    CommUtils.outcyan("Connection closed")
+}
+
+    
+@Test
+fun testLoadAcceptance() {
+    try {
+   //inviamo richiesta di carico a sistema libero
+    val requestMsg = "msg(load,request,testunit,cargoservice,load(100),1)"
+
+    val reply = conn?.request(requestMsg)
+
+    //verifichiamo che la risposta contenga l'accettazione
+    val isExpectedReplyType = reply.toString().contains("accepted") || 
+                              reply.toString().contains("retrylater") || 
+                              reply.toString().contains("refused")
+    
+
+    assertTrue("messaggio non conforme: $eply.toString()", isExpectedReplyType)
+
+    assertTrue("è stata rifiutata o rinviata! Risposta: $eply.toString()", 
+               reply.toString().contains("accepted"))
+   
+    } catch (e: Exception) {
+        fail("Test fallito a causa di un'eccezione: ${e.message} " )
+    }
+}
+    
 </pre>
+
+
+
 
 
 <h2>Project</h2>
