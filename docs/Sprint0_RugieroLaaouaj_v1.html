@@ -356,12 +356,12 @@ fun testLoadAcceptance() {
     //verifichiamo che la risposta contenga l'accettazione
     val isExpectedReplyType = reply.toString().contains("accepted") || 
                               reply.toString().contains("retrylater") || 
-                              reply.toString().contains("refused")
+                              reply.toString().contains("reject")
     
 
-    assertTrue("messaggio non conforme: $eply.toString()", isExpectedReplyType)
+    assertTrue("messaggio non conforme: $reply.toString()", isExpectedReplyType)
 
-    assertTrue("è stata rifiutata o rinviata! Risposta: $eply.toString()", 
+    assertTrue("è stata rifiutata o rinviata! Risposta: $reply.toString()", 
                reply.toString().contains("accepted"))
    
     } catch (e: Exception) {
