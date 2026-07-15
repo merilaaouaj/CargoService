@@ -3,13 +3,6 @@
 <html>
 <head>
 
-
-
-
-
-
-
-
 <link rel="stylesheet" type="text/css" href="css/mystyle.css">
 <!--
     <script type="text/javascript" src="../css/issStyle.js"></script>
@@ -104,7 +97,8 @@ L’entità HOLD è un componente passivo implementato come un POJO, è da svilu
     </span>
     </li>
     <li>
-        <span><b>CARGOROBOT</b>: è l'entità logica attiva che rappresenta il comportamento del Differential Drive Robot (DDR), che modelliamo come QActor.
+        <span><b>CARGOROBOT</b>: è l'entità logica attiva che rappresenta il comportamento del Differential Drive Robot (DDR). Modelliamo questa entità come QActor, in quanto permette di offrire un servizio 
+            disaccopiato dalla tecnologia utilizzata e con cui posso interagire.
             Il committente fornisce una serie di componenti pre-costruiti per comandare il DDR robot, tra cui:
             <ul>
                 <li><a href=”https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.25”>VirtualRobot26</a></li>
@@ -112,7 +106,8 @@ L’entità HOLD è un componente passivo implementato come un POJO, è da svilu
                 <li><a href=”https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.27”>RobotService26</a></li>
                 <li><a href=”https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.30”>RobotSmart26</a></li>
             </ul>
-            Abbiamo deciso di usare l'implementazione di <b>RobortSmart26</b>, in quanto è il componente che include nativamente più funzionalità al suo interno (come algoritmi di path-planning basato su una griglia) ed è quello che ci permette maggiormente di colmare l'abstraction gap dell’applicazione.<br>
+            Abbiamo deciso di usare l'implementazione di <b>RobortSmart26</b>, perchè contiene una rappresentazione della stanza come mappa e fortunatamente è la stessa mappa della hold dei requisiti. Inoltre 
+            questo componente permette di pianificare i movimenti garantendo un certo grado di autonomia al CargoRobot. Tutte queste caratteristiche lo rendono il componente migliore da usare in quanto ci permette maggiormente di colmare l'abstraction gap dell’applicazione.<br>
             Il CargoRobot funge da nodo mediatore traducendo i comandi logici di alto livello ricevuti in istruzione comprensibili dal RobortSmart26.
     </span>
     </li>
