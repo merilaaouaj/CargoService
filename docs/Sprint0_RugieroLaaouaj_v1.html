@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
@@ -77,7 +78,50 @@ Dal confronto con il committente, abbiamo chiarito e formalizzato le seguenti en
     <ol class="req-list">
     <li>
         <span><b>IOPORT</b>: è un’entità che rappresenta il canale di comunicazione tra il sistema esterno e il CargoService. Ha il compito di inoltrare le richieste dell’utente al sistema e di mostrare il feedback con un output visivo.<br>
-       Include il <b>pushbutton</b> (device di input per inviare richieste, componente reattivo) e il <b>display</b> (device di output per mostrare lo stato del sistema, componente passivo). Il committente ci ha informato che questo componente va sviluppato e viene modellato logicamente come un nodo indipendente che espone un’interfaccia web (<b>WebGUI</b>).  
+       Include il <b>pushbutton</b> (device di input per inviare richieste, componente reattivo) e il <b>display</b> (device di output per mostrare lo stato del sistema, componente passivo). Il committente ci ha informato che questo componente va sviluppato e viene modellato logicamente come un nodo indipendente che espone un’interfaccia web (<b>WebGUI</b>).  <br>
+La modelliamo come un Qactor siccome ha una natura proattiva e reattiva : <br>
+<pre>
+// richieste del customer
+Request load : load(X)
+Reply accepted   : accepted(SLOT)            for load   // accettazione
+Reply retrylater : retrylater(RetryMessage)  for load   // rinvio
+Reply reject     : reject(RejectedMessage)   for load   // rifiuto
+
+QActor ioportmock context ctxioport {
+
+State s0 initial {
+ println("ioportmock | stato iniziale") 
+}
+Goto work
+
+State work {
+ println("ioportmock | (working)...")
+ request cargoservice -m load : load(100)
+}
+
+Transition t0 
+    whenReply accepted -> handleRequest
+    whenReply retrylater -> handleRetry
+    whenReply reject -> handleReject
+
+
+State handleRequest {
+println("ioportmock | (handleRequest , accepted)...")
+}
+Goto work
+
+State handleRetry {
+println("ioportmock | (handleRetry , retryLater)...")
+}
+Goto work
+
+State handleReject {
+println("ioportmock | (handleReject , rejected)...")
+}
+Goto work
+
+}
+</pre>
        </span>
     </li>
     <li>
@@ -89,6 +133,19 @@ Dal confronto con il committente, abbiamo chiarito e formalizzato le seguenti en
             </ul>
  Il Sensor viene formalizzato come un micro-servizio autonomo (<b>Qactor</b>) allocato su un nodo computazionale distinto.
             Il sensor riceve i dati grezzi direttamente dall'hardware. Ha il compito di isolare la logica di business dalle caratteristiche fisiche e dai segnali grezzi del mondo reale. <br>
+<pre>
+QActor sonar context ctxdev {
+    State s0 initial {
+        println("sonar | stato iniziale")
+    }
+    Goto work
+    
+    State work {
+    println("sonar | working")
+    }
+}
+
+</pre>
         </span>
     </li>
     <li>
@@ -108,30 +165,125 @@ L’entità HOLD è un componente passivo implementato come un POJO, è da svilu
             </ul>
             Abbiamo deciso di usare l'implementazione di <b>RobortSmart26</b>, perchè contiene una rappresentazione della stanza come mappa e fortunatamente è la stessa mappa della hold dei requisiti. Inoltre 
             questo componente permette di pianificare i movimenti garantendo un certo grado di autonomia al CargoRobot. Tutte queste caratteristiche lo rendono il componente migliore da usare in quanto ci permette maggiormente di colmare l'abstraction gap dell’applicazione.<br>
-            Il CargoRobot funge da nodo mediatore traducendo i comandi logici di alto livello ricevuti in istruzione comprensibili dal RobortSmart26.
+            Il CargoRobot funge da nodo mediatore traducendo i comandi logici di alto livello ricevuti in istruzione comprensibili dal RobortSmart26. <br>
+
+<pre>
+QActor cargorobot context ctxrobot {
+State s0 initial {
+ println("cargorobot  | stato iniziale") 
+}
+Goto work
+
+State work {
+ println("cargorobot | (working)...")
+}
+}
+</pre>
     </span>
     </li>
     <li>
         <span><b>CARGOSERVICE</b>: è il nodo orchestratore del sistema, implementa la logica di business del sistema e dirige il CargoRobot (lo rappresentiamo come un attore).
-            Il core business del sistema è l'automatizzazione delle operazioni di carico del container nella hold della nave. Implementa le logiche di accettazione, rifiuto, transizione degli stati operativo/guasto e coordinamento del movimento del robot.
+            Il core business del sistema è l'automatizzazione delle operazioni di carico del container nella hold della nave. Implementa le logiche di accettazione, rifiuto, transizione degli stati operativo/guasto e coordinamento del movimento del robot. <br>
+
+<pre>
+// richieste del customer
+Request load : load(X)
+Reply accepted   : accepted(SLOT)            for load   // accettazione
+Reply retrylater : retrylater(RetryMessage)  for load   // rinvio
+Reply reject     : reject(RejectedMessage)   for load   // rifiuto
+
+// per il sonar
+Dispatch distance : distance(X)
+
+Context ctxcargoservice ip [ host="localhost" port=8020 ]
+
+QActor cargoservice context ctxcargoservice {
+  [# 
+     var NSlotsOccupied = 0  
+     var IsEngaged = false
+  #]
+
+   State s0 initial {
+      println("cargoservice | stato iniziale")
+   }
+   Goto working
+
+   State working {
+      println("cargoservice | (working)...")
+   }
+   Transition t0
+      whenRequest load -> handleRequest
+
+   State handleRequest {
+      println("cargoservice | handleRequest ")
+
+      if [# IsEngaged #] {  //il sistema sta già gestendo una richiesta di carico
+         replyTo load with retrylater : retrylater("engaged")
+      }
+      else 
+      {  if[# NSlotsOccupied == 4 #] {  //tutti gli slot sono occupati
+         replyTo load with reject : reject("hold_full")
+         }
+          else {
+         [# 
+            NSlotsOccupied++ 
+            IsEngaged = true
+         #]
+         replyTo load with accepted : accepted($NSlotsOccupied)
+      }
+      }
+     
+   }
+   Goto engaged if [# IsEngaged #] else working
+
+   State engaged {
+      println("cargoservice | sistema engaged. Avvio lampeggio LED...")
+   }
+}
+</pre>
     </span>
     <li>
         <span><b>LED</b>: è un dispositivo luminoso collegato a un PicoW. Il CargoService deve poterlo accendere quando il sistema entra nello stato <i>engaged</i>, e deve spegnerlo quando torna nello stato <i>disengaged</i>. Esso è un’ entità passiva di output.
     </li>
 </ol>
+<br>
+<pre>
+QActor led context ctxdev {
+    State s0 initial {
+        println("led | stato iniziale")
+    }
+    Goto work
+    
+    State work {
+    println("led | working")
+    }
+}
+</pre>
 
-
-<h3>Architettura del sistema</h3>
-Il sistema è un’architettura eterogenea e distribuita e si compone di quattro nodi computazionali: <br>
-<ul>
-<li> Nodo orchestratore del sistema (CargoService) che realizza il core business. </li>
-<li> Nodo CargoRobot, nodo mediatore che realizza l’applicazione nell’interazione con il DDR </li>
-<li> Nodo IOPORT che espone interfaccia GUI per l’interazione con l’utente </li>
-<li> Nodo che esegue il SENSOR usando dispositivo PicoW</li>
-
-
-</ul>
-
+<h3>Contesti logici</h3>
+Dai requisiti si evince come il sistema sia intrinsecamente distribuito e non riducibile a un singolo processo unitario. Per questo motivo, le varie entità sono state ripartire in contesti (<b>context</b>) distinti, ciascuno dei quali funge da specifico nodo di elaborazione. Il sistema si compone dei seguenti quattro nodi computazionali.
+<table>
+  <tr>
+    <th>Contesto</th>
+    <th>Componenti e responsabilità</th>
+  </tr>
+  <tr>
+    <td>ctxcargoservice</td>
+    <td>Rappresenta il cuore logico dell’applicazione e si occupa di coordinare l’intero ciclo di caricamento. Ospita al suo interno il componente <i>cargoservice</i> e la Hold</td>
+  </tr>
+ <tr>
+    <td>ctxrobot</td>
+    <td>Riunisce tutti i moduli e le funzioni associate alla gestione operativa e agli spostamenti del <i>cargorobot</i></td>
+  </tr>
+<tr>
+    <td>ctxioport</td>
+    <td>Gestisce l’interfaccia e l’interazione con l’utente. Include l’entità <i>IOPort</i> </td>
+  </tr>
+  <tr>
+    <td>ctxdev</td>
+    <td>Raccoglie e controlla i dispositivi hardware posizionati nella <i>hold</i>, ovvero il sonar, il LED e il <i>markerdevice</i></td>
+  </tr>
+</table> 
 
 <h3>Modello dell'Interazione Logica</h3>
 
@@ -139,6 +291,7 @@ Il sistema è un’architettura eterogenea e distribuita e si compone di quattro
 Scegliamo di modellare il sistema attraverso il linguaggio
 <a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.17">QAK</a>.
 Nel nostro sistema sono presenti diversi nodi eterogenei, dunque è necessario realizzare un modello distribuito. Usare un linguaggio di programmazione <i>general purpose</i> richiederebbe una quantità onerosa di codice ed è molto dipendente dalla tecnologia sottostante e dal protocollo di comunicazione scelto.
+QAK riesce a rappresentare la natura reattiva e proattiva dei servizi, introducendo attori, request/reply, eventi, messaggi e dispatch.
 Scegliamo quindi QAK perchè permette di ridurre l'abstraction gap tra requisiti nel contesto di un sistema distribuito (nasconde i dettagli implementativi relativi alla comunicazione) e per il suo essere technology independent.<br>
 
 
