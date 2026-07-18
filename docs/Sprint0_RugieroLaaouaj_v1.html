@@ -74,6 +74,57 @@ failure of the sonar).</li>
 
 <h2>Requirement analysis</h2>
 <p>    
+
+<h3>Contesti logici</h3>
+
+Dai requisiti si evince come il sistema sia intrinsecamente distribuito e non riducibile a un singolo processo unitario. Per questo motivo, le varie entità sono state ripartire in contesti (<b>context</b>) distinti, ciascuno dei quali funge da specifico nodo di elaborazione. Il sistema si compone dei seguenti quattro nodi computazionali.<br>
+<table>
+  <tr>
+    <th>Contesto</th>
+    <th>Componenti e responsabilità</th>
+  </tr>
+  <tr>
+    <td>ctxcargoservice</td>
+    <td>Rappresenta il cuore logico dell’applicazione e si occupa di coordinare l’intero ciclo di caricamento. Ospita al suo interno il componente <i>cargoservice</i> e la Hold</td>
+  </tr>
+ <tr>
+    <td>ctxrobot</td>
+    <td>Riunisce tutti i moduli e le funzioni associate alla gestione operativa e agli spostamenti del <i>cargorobot</i></td>
+  </tr>
+<tr>
+    <td>ctxioport</td>
+    <td>Gestisce l’interfaccia e l’interazione con l’utente. Include l’entità <i>IOPort</i> </td>
+  </tr>
+  <tr>
+    <td>ctxdev</td>
+    <td>Raccoglie e controlla i dispositivi hardware posizionati nella <i>hold</i>, ovvero il sonar, il LED e il <i>markerdevice</i></td>
+  </tr>
+</table> 
+
+<h3>Modello dell'Interazione Logica</h3>
+    
+Nel nostro sistema sono presenti diversi nodi eterogenei, dunque è necessario realizzare un modello distribuito. Usare un linguaggio di programmazione <i>general purpose</i>, come ad esempio Java, per rappresentare questi elementi eterogenei richiederebbe una quantità onerosa di codice, in quanto fortemente dipendente dal protocollo 
+    di comunicazione scelto. Se in futuro si volesse cambiare protocollo, si sarebbe costretti a modificare pesantemente il codice applicativo.
+<br>Fortunatamente, la software house ci fornisce il linguaggio di modellazione
+<a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.17">QAK</a>.
+Sebbene l'Actor sia il paradigma di riferimento di questo linguaggio, QAK permette a questo costrutto di assumere ruoli differenti, il che è ideale per il sistema che stiamo sviluppando.
+QAK riesce a rappresentare la natura reattiva e proattiva dei servizi, introducendo attori, request/reply, eventi, messaggi e dispatch. <br>
+Scegliamo quindi QAK perchè permette di ridurre l'abstraction gap tra requisiti nel contesto di un sistema distribuito (nasconde i dettagli implementativi relativi alla comunicazione) e per il suo essere technology independent.<br>
+
+Le interazioni tra le entità avvengono attraverso un pattern <b>request/reply</b>. <br>
+Quando viene premuto il pushbutton viene inviata una richiesta al CargoService.
+<br>
+
+<h3>Formalizzazione dei messaggi QAK</h3>
+<pre>
+Request load : load(X)
+Reply accepted : accepted (SLOT) for load   //accettazione
+Reply retrylater : retrylater(RetryMessage) for load //rinvio
+Reply reject : reject(RejectedMessage) for load //rifiuto
+</pre>
+</p>
+
+<h3>Componenti</h3>
 Dal confronto con il committente, abbiamo chiarito e formalizzato le seguenti entità e i seguenti vincoli del sistema: <br>
     <ol class="req-list">
     <li>
@@ -106,17 +157,17 @@ Transition t0
 
 
 State handleRequest {
-println("ioportmock | (handleRequest , accepted)...")
+    println("ioportmock | (handleRequest , accepted)...")
 }
 Goto work
 
 State handleRetry {
-println("ioportmock | (handleRetry , retryLater)...")
+    println("ioportmock | (handleRetry , retryLater)...")
 }
 Goto work
 
 State handleReject {
-println("ioportmock | (handleReject , rejected)...")
+    println("ioportmock | (handleReject , rejected)...")
 }
 Goto work
 
@@ -169,21 +220,22 @@ L’entità HOLD è un componente passivo implementato come un POJO, è da svilu
 
 <pre>
 QActor cargorobot context ctxrobot {
-State s0 initial {
- println("cargorobot  | stato iniziale") 
-}
-Goto work
-
-State work {
- println("cargorobot | (working)...")
-}
+    State s0 initial {
+       println("cargorobot  | stato iniziale") 
+    }
+    Goto work
+    
+    State work {
+       println("cargorobot | (working)...")
+    }
 }
 </pre>
     </span>
     </li>
     <li>
         <span><b>CARGOSERVICE</b>: è il nodo orchestratore del sistema, implementa la logica di business del sistema e dirige il CargoRobot (lo rappresentiamo come un attore).
-            Il core business del sistema è l'automatizzazione delle operazioni di carico del container nella hold della nave. Implementa le logiche di accettazione, rifiuto, transizione degli stati operativo/guasto e coordinamento del movimento del robot. <br>
+            Il core business del sistema è l'automatizzazione delle operazioni di carico del container nella hold della nave. 
+            Implementa le logiche di accettazione, rifiuto, transizione degli stati operativo/guasto e coordinamento del movimento del robot. <br>
 
 <pre>
 // richieste del customer
@@ -260,51 +312,6 @@ QActor led context ctxdev {
 }
 </pre>
 
-<h3>Contesti logici</h3>
-Dai requisiti si evince come il sistema sia intrinsecamente distribuito e non riducibile a un singolo processo unitario. Per questo motivo, le varie entità sono state ripartire in contesti (<b>context</b>) distinti, ciascuno dei quali funge da specifico nodo di elaborazione. Il sistema si compone dei seguenti quattro nodi computazionali.<br>
-<table>
-  <tr>
-    <th>Contesto</th>
-    <th>Componenti e responsabilità</th>
-  </tr>
-  <tr>
-    <td>ctxcargoservice</td>
-    <td>Rappresenta il cuore logico dell’applicazione e si occupa di coordinare l’intero ciclo di caricamento. Ospita al suo interno il componente <i>cargoservice</i> e la Hold</td>
-  </tr>
- <tr>
-    <td>ctxrobot</td>
-    <td>Riunisce tutti i moduli e le funzioni associate alla gestione operativa e agli spostamenti del <i>cargorobot</i></td>
-  </tr>
-<tr>
-    <td>ctxioport</td>
-    <td>Gestisce l’interfaccia e l’interazione con l’utente. Include l’entità <i>IOPort</i> </td>
-  </tr>
-  <tr>
-    <td>ctxdev</td>
-    <td>Raccoglie e controlla i dispositivi hardware posizionati nella <i>hold</i>, ovvero il sonar, il LED e il <i>markerdevice</i></td>
-  </tr>
-</table> 
-
-<h3>Modello dell'Interazione Logica</h3>
-
-
-Scegliamo di modellare il sistema attraverso il linguaggio
-<a href="https://anatali.github.io/issLab2026/_static/docs/Protobook.pdf#chapter.17">QAK</a>.
-Nel nostro sistema sono presenti diversi nodi eterogenei, dunque è necessario realizzare un modello distribuito. Usare un linguaggio di programmazione <i>general purpose</i> richiederebbe una quantità onerosa di codice ed è molto dipendente dalla tecnologia sottostante e dal protocollo di comunicazione scelto.
-QAK riesce a rappresentare la natura reattiva e proattiva dei servizi, introducendo attori, request/reply, eventi, messaggi e dispatch.
-Scegliamo quindi QAK perchè permette di ridurre l'abstraction gap tra requisiti nel contesto di un sistema distribuito (nasconde i dettagli implementativi relativi alla comunicazione) e per il suo essere technology independent.<br>
-
-Le interazioni tra le entità avvengono attraverso un pattern <b>request/reply</b>. <br>
-Quando viene premuto il pushbutton viene inviata una richiesta al CargoService.
-<br>
-<pre>
-Request load : load(X)
-Reply accepted : accepted (SLOT) for load   //accettazione
-Reply retrylater : retrylater(RetryMessage) for load //rinvio
-Reply reject : reject(RejectedMessage) for load //rifiuto
-</pre>
-</p>
-
 <h3> Abstraction Gap </h3>
 Uno dei nostri obiettivi è colmare l’abstraction gap presente tra il core business/specifiche del committente e la realtà computazionale.
 Utilizziamo quindi RobotSmart26 che astrae la pianificazione del percorso su mappa e modelliamo il Sensor come QActor.
@@ -313,7 +320,9 @@ In questo modo il CargoService che è il nostro orchestratore può concentrarsi 
 <h2>Problem analysis</h2>
 
 <h2>Test plans</h2>
-La verifica della logica di business dello Sprint0 viene validata tramite test che simulano lo scambio di messaggi sugli attori logici. <br><br>
+La verifica della logica di business dello Sprint0 viene validata tramite test che 
+    simulano lo scambio di messaggi sugli attori logici. 
+In particolare viene testata la risposta a una richiesta di carico<br>
 
 <b>Accettazione richiesta</b><br>
 <pre>
@@ -341,17 +350,14 @@ fun testLoadAcceptance() {
     val requestMsg = "msg(load,request,testunit,cargoservice,load(100),1)"
 
     val reply = conn?.request(requestMsg)
+    assertNotNull("Nessuna risposta ricevuta dal cargoservice", reply)
 
-    //verifichiamo che la risposta contenga l'accettazione
-    val isExpectedReplyType = reply.toString().contains("accepted") || 
-                              reply.toString().contains("retrylater") || 
-                              reply.toString().contains("reject")
+    val body = reply.toString()
+    CommUtils.outgreen("Risposta da cargoservice: $body")
     
-
-    assertTrue("messaggio non conforme: $reply.toString()", isExpectedReplyType)
-
-    assertTrue("è stata rifiutata o rinviata! Risposta: $reply.toString()", 
-               reply.toString().contains("accepted"))
+    //verifichiamo che la risposta contenga l'accettazione
+    assertTrue("Il sistema non ha accettato la richiesta. Risposta ricevuta: $body", body.contains("accepted"))    
+    assertTrue("Rilevata risposta non consona allo stato iniziale: $body", !body.contains("reject") && !body.contains("retrylater"))
    
     } catch (e: Exception) {
         fail("Test fallito a causa di un'eccezione: ${e.message} " )
@@ -359,9 +365,6 @@ fun testLoadAcceptance() {
 }
     
 </pre>
-
-
-
 
 
 <h2>Project</h2>
